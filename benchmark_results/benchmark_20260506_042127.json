@@ -1,0 +1,64 @@
+{
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 4060 Ti",
+    "sm": "8.9",
+    "memory_total_gb": 16.722296832
+  },
+  "benchmarks": [
+    {
+      "model": "groot_n17",
+      "mean_ms": 38.178879220504314,
+      "p50_ms": 38.116449999506585,
+      "p95_ms": 38.45310900214827,
+      "p99_ms": 41.54822599957697,
+      "min_ms": 37.93118099565618,
+      "max_ms": 41.54822599957697,
+      "target_ms": 50,
+      "passed": true,
+      "n": 100,
+      "timestamp": "2026-05-06T04:21:01.771189",
+      "config": {
+        "num_views": 1,
+        "num_flow_steps": 2
+      }
+    },
+    {
+      "model": "pi05",
+      "mean_ms": 100.6444441198255,
+      "p50_ms": 100.05190499941818,
+      "p95_ms": 100.34759400150506,
+      "p99_ms": 122.66567700135056,
+      "min_ms": 99.9116849998245,
+      "max_ms": 122.66567700135056,
+      "target_ms": 50,
+      "hardware_limit": true,
+      "passed": true,
+      "n": 50,
+      "timestamp": "2026-05-06T04:21:21.305823",
+      "config": {
+        "num_views": 2,
+        "num_steps": 2
+      },
+      "note": "SM89 hardware limit (~60ms for num_views=2)"
+    },
+    {
+      "model": "qwen25_0.5b",
+      "mean_ms": 206.78099880096852,
+      "p50_ms": 205.5097430056776,
+      "p95_ms": 219.5847490002052,
+      "min_ms": 198.1660820019897,
+      "max_ms": 219.5847490002052,
+      "tokens": 10,
+      "tokens_per_second": 48.36034286508709,
+      "passed": true,
+      "n": 20,
+      "timestamp": "2026-05-06T04:21:27.479242",
+      "config": {
+        "max_new_tokens": 10
+      }
+    }
+  ],
+  "timestamp": "2026-05-06T04:20:47.686960",
+  "passed": 3,
+  "failed": 0
+}

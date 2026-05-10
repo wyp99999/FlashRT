@@ -1,0 +1,284 @@
+# FlashRT Helm Chart Default Values
+# Configure FlashRT inference services
+
+# Global settings
+global:
+  imageRegistry: ghcr.io
+  imagePullSecrets: []
+  storageClass: ""
+
+# FlashRT version
+flashrtVersion: "0.1.0"
+
+# GPU configuration
+gpu:
+  enabled: true
+  type: nvidia
+  smVersion: "89"  # RTX 4060 Ti/4070/4080
+  # For SM90 (RTX 4090), change to: smVersion: "90"
+  # For SM100 (RTX 5090/Jetson Thor), change to: smVersion: "100"
+  memoryLimit: "16Gi"
+  count: 1
+
+# Model configurations
+models:
+  groot:
+    enabled: true
+    name: groot-n17
+    checkpoint: /data/models/groot-n1.7
+    image: flashrt:sm89
+    replicas: 1
+    port: 8080
+    metricsPort: 9090
+    config:
+      num_views: 1
+      num_flow_steps: 2
+      precision: fp16
+    resources:
+      requests:
+        memory: "4Gi"
+        gpu: 1
+      limits:
+        memory: "8Gi"
+        gpu: 1
+    # Performance targets
+    targetLatencyMs: 50
+
+  pi05:
+    enabled: true
+    name: pi05
+    checkpoint: /data/models/pi05_base
+    image: flashrt:sm89
+    replicas: 1
+    port: 8081
+    metricsPort: 9091
+    config:
+      num_views: 1
+      num_steps: 1
+      precision: fp16
+    resources:
+      requests:
+        memory: "6Gi"
+        gpu: 1
+      limits:
+        memory: "12Gi"
+        gpu: 1
+    # Note: SM89 hardware limit ~59ms
+    targetLatencyMs: 60
+
+  qwen:
+    enabled: true
+    name: qwen25-0.5b
+    checkpoint: /data/models/qwen2.5-0.5b
+    image: flashrt:sm89
+    replicas: 1
+    port: 8082
+    metricsPort: 9092
+    config:
+      max_new_tokens: 10
+      precision: fp16
+    resources:
+      requests:
+        memory: "2Gi"
+        gpu: 1
+      limits:
+        memory: "4Gi"
+        gpu: 1
+
+# Service configuration
+service:
+  type: ClusterIP
+  annotations: {}
+  # For LoadBalancer:
+  # type: LoadBalancer
+  # loadBalancerIP: ""
+  # loadBalancerSourceRanges: []
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+  hosts:
+    - host: flashrt.local
+      paths:
+        - path: /groot
+          service: groot
+        - path: /pi05
+          service: pi05
+        - path: /qwen
+          service: qwen
+  tls: []
+  #  - secretName: flashrt-tls
+  #    hosts:
+  #      - flashrt.local
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+    retention: "15d"
+    storage: "10Gi"
+  grafana:
+    enabled: true
+    adminPassword: "flashrt123"
+    storage: "5Gi"
+  alerts:
+    enabled: true
+    slackUrl: ""
+    email: ""
+
+# Autoscaling configuration
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  # Custom metrics
+  customMetrics:
+    - type: Pods
+      pods:
+        metric:
+          name: flashrt_queue_depth
+        target:
+          type: AverageValue
+          averageValue: 50
+
+# Node selector
+nodeSelector: {}
+# For GPU nodes:
+# nodeSelector:
+#   nvidia.com/gpu.present: "true"
+#   nvidia.com/gpu.sm: "89"
+
+# Tolerations
+tolerations: []
+# - key: nvidia.com/gpu
+#   operator: Exists
+#   effect: NoSchedule
+
+# Affinity
+affinity: {}
+# podAntiAffinity:
+#   preferredDuringSchedulingIgnoredDuringExecution:
+#     - weight: 100
+#       podAffinityTerm:
+#         labelSelector:
+#           matchLabels:
+#             app: flashrt
+#         topologyKey: kubernetes.io/hostname
+
+# Security context
+securityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+  runAsGroup: 0
+  fsGroup: 0
+  capabilities:
+    add:
+      - SYS_PTRACE
+
+# Container security context
+containerSecurityContext:
+  privileged: false
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+
+# Persistence configuration
+persistence:
+  enabled: true
+  models:
+    enabled: true
+    storageClass: ""
+    size: "50Gi"
+    accessMode: ReadWriteOnce
+    mountPath: /data/models
+  checkpoints:
+    enabled: true
+    storageClass: ""
+    size: "100Gi"
+    accessMode: ReadOnceMany
+    mountPath: /data/checkpoints
+
+# Environment variables
+env:
+  HF_ENDPOINT: "https://hf-mirror.com"
+  CUDA_VISIBLE_DEVICES: "0"
+  FLASHRT_LOG_LEVEL: "INFO"
+  FLASHRT_PRECISION: "FP16"
+
+# ConfigMap data
+configMaps:
+  flashrtConfig:
+    data:
+      config.yaml: |
+        models:
+          groot:
+            num_views: 1
+            num_flow_steps: 2
+          pi05:
+            num_views: 1
+            num_steps: 1
+          qwen:
+            max_new_tokens: 10
+
+# Secrets
+secrets:
+  hfToken:
+    enabled: false
+    token: ""
+  apiKeys:
+    enabled: false
+    keys: []
+
+# Health checks
+healthCheck:
+  enabled: true
+  readiness:
+    path: /health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+  liveness:
+    path: /health
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 5
+
+# Logging configuration
+logging:
+  enabled: true
+  format: json
+  level: info
+  # Fluentd/Fluent Bit integration
+  sidecar:
+    enabled: false
+    image: fluent/fluent-bit:1.8
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# Priority class
+priorityClassName: ""
+
+# Service account
+serviceAccount:
+  create: true
+  name: flashrt
+  annotations: {}
+
+# Network policies
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []

@@ -1,0 +1,115 @@
+# FlashRT Alert Rules
+
+groups:
+  - name: flashrt_performance
+    rules:
+      # GROOT latency alert
+      - alert: GROOTLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(flashrt_request_latency_seconds_bucket{model="groot_n17"}[5m])) by (le)) * 1000 > 50
+        for: 2m
+        labels:
+          severity: warning
+          model: groot_n17
+        annotations:
+          summary: "GROOT latency exceeds 50ms"
+          description: "GROOT N1.7 P95 latency is {{ $value }}ms, target is <50ms"
+
+      # Pi0.5 latency alert (hardware limited)
+      - alert: Pi05LatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(flashrt_request_latency_seconds_bucket{model="pi05"}[5m])) by (le)) * 1000 > 70
+        for: 5m
+        labels:
+          severity: warning
+          model: pi05
+        annotations:
+          summary: "Pi0.5 latency exceeds 70ms"
+          description: "Pi0.5 P95 latency is {{ $value }}ms, expected ~59ms on SM89"
+
+      # High GPU memory usage
+      - alert: GPUMemoryHigh
+        expr: (flashrt_gpu_memory_used_bytes / flashrt_gpu_memory_total_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU memory usage > 90%"
+          description: "GPU {{ $labels.gpu_id }} memory usage is {{ $value | humanizePercentage }}"
+
+      # GPU memory critical
+      - alert: GPUMemoryCritical
+        expr: (flashrt_gpu_memory_used_bytes / flashrt_gpu_memory_total_bytes) > 0.95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU memory usage critical > 95%"
+          description: "GPU {{ $labels.gpu_id }} memory usage is {{ $value | humanizePercentage }}. Immediate action required."
+
+      # Low GPU utilization
+      - alert: GPUUtilizationLow
+        expr: flashrt_gpu_utilization_percent < 10
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "GPU utilization < 10%"
+          description: "GPU {{ $labels.gpu_id }} utilization is {{ $value }}%"
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: sum(rate(flashrt_request_total{status="error"}[5m])) / sum(rate(flashrt_request_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate > 5%"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+      # Accuracy degradation
+      - alert: AccuracyDegradation
+        expr: flashrt_accuracy_mse > 0.01
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Accuracy MSE exceeds threshold"
+          description: "Model {{ $labels.model }} MSE is {{ $value }} (threshold: 0.01)"
+
+      - alert: AccuracyCosineLow
+        expr: flashrt_accuracy_cosine < 0.999
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Accuracy cosine similarity below threshold"
+          description: "Model {{ $labels.model }} cosine is {{ $value }} (threshold: 0.999)"
+
+      # Service down
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.instance }} is not responding"
+
+      # Queue depth high
+      - alert: QueueDepthHigh
+        expr: flashrt_queue_depth > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High queue depth for {{ $labels.model }}"
+          description: "Queue depth is {{ $value }} for model {{ $labels.model }}"
+
+      # Throughput degradation
+      - alert: ThroughputDegradation
+        expr: sum(rate(flashrt_request_total{status="success"}[10m])) < 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low throughput < 5 req/s"
+          description: "Request throughput has dropped to {{ $value }} req/s"

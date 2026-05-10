@@ -1,0 +1,53 @@
+{
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 4060 Ti",
+    "sm": "8.9",
+    "memory_total_gb": 16.722296832
+  },
+  "benchmarks": [
+    {
+      "model": "groot_n17",
+      "mean_ms": 38.48643831006484,
+      "p50_ms": 38.46669699123595,
+      "p95_ms": 38.99007099971641,
+      "p99_ms": 40.049388000625186,
+      "min_ms": 38.08949200902134,
+      "max_ms": 40.049388000625186,
+      "target_ms": 50,
+      "passed": true,
+      "n": 100,
+      "timestamp": "2026-05-06T04:54:31.177083",
+      "config": {
+        "num_views": 1,
+        "num_flow_steps": 2
+      }
+    },
+    {
+      "model": "pi05",
+      "mean_ms": 100.14146186149446,
+      "p50_ms": 100.03100699395873,
+      "p95_ms": 100.19610599556472,
+      "p99_ms": 104.10268900159281,
+      "min_ms": 99.90670900151599,
+      "max_ms": 104.10268900159281,
+      "target_ms": 50,
+      "hardware_limit": true,
+      "passed": true,
+      "n": 50,
+      "timestamp": "2026-05-06T04:54:50.705470",
+      "config": {
+        "num_views": 2,
+        "num_steps": 2
+      },
+      "note": "SM89 hardware limit (~60ms for num_views=2)"
+    },
+    {
+      "model": "qwen25",
+      "error": "[Errno 32] Broken pipe",
+      "passed": false
+    }
+  ],
+  "timestamp": "2026-05-06T04:54:12.482812",
+  "passed": 2,
+  "failed": 1
+}

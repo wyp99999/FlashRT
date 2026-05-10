@@ -1,0 +1,347 @@
+# FlashRT SM89 Kubernetes Deployment
+#
+# Usage:
+#   kubectl apply -f flashrt-deployment.yaml
+#
+# Prerequisites:
+#   - Kubernetes cluster with NVIDIA GPU operator
+#   - FlashRT SM89 image built and pushed to registry
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flashrt
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flashrt-config
+  namespace: flashrt
+data:
+  HF_ENDPOINT: "https://hf-mirror.com"
+  MODEL_PATH: "/models"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: flashrt-secrets
+  namespace: flashrt
+type: Opaque
+data:
+  # Add any secrets here (base64 encoded)
+  # echo -n "your-secret" | base64
+
+---
+# GROOT N1.7 Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flashrt-groot
+  namespace: flashrt
+  labels:
+    app: flashrt-groot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flashrt-groot
+  template:
+    metadata:
+      labels:
+        app: flashrt-groot
+    spec:
+      containers:
+      - name: groot-api
+        image: flashrt:sm89  # Replace with your registry
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+            memory: "16Gi"
+            cpu: "4"
+          requests:
+            nvidia.com/gpu: 1
+            memory: "8Gi"
+            cpu: "2"
+        env:
+        - name: HF_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: flashrt-config
+              key: HF_ENDPOINT
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        command:
+        - python3
+        - -m
+        - flash_rt.services.async_api_server
+        - --model
+        - groot_n17
+        - --port
+        - "8080"
+        - --checkpoint
+        - /models/groot-n1.7
+        - --num_views
+        - "1"
+        - --num_flow_steps
+        - "2"
+        volumeMounts:
+        - name: models
+          mountPath: /models
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+      volumes:
+      - name: models
+        hostPath:
+          path: /data/models
+          type: Directory
+      nodeSelector:
+        accelerator: nvidia-rtx-4060-ti  # Adjust for your GPU
+
+---
+# GROOT Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: flashrt-groot
+  namespace: flashrt
+spec:
+  selector:
+    app: flashrt-groot
+  ports:
+  - port: 80
+    targetPort: 8080
+    name: http
+  type: ClusterIP
+
+---
+# Pi0.5 Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flashrt-pi05
+  namespace: flashrt
+  labels:
+    app: flashrt-pi05
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flashrt-pi05
+  template:
+    metadata:
+      labels:
+        app: flashrt-pi05
+    spec:
+      containers:
+      - name: pi05-api
+        image: flashrt:sm89
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+            memory: "16Gi"
+            cpu: "4"
+          requests:
+            nvidia.com/gpu: 1
+            memory: "8Gi"
+            cpu: "2"
+        env:
+        - name: HF_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: flashrt-config
+              key: HF_ENDPOINT
+        command:
+        - python3
+        - -m
+        - flash_rt.services.async_api_server
+        - --model
+        - pi05
+        - --port
+        - "8080"
+        - --checkpoint
+        - /models/pi05_base
+        - --num_views
+        - "1"
+        - --num_steps
+        - "1"
+        volumeMounts:
+        - name: models
+          mountPath: /models
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+      volumes:
+      - name: models
+        hostPath:
+          path: /data/models
+          type: Directory
+
+---
+# Pi0.5 Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: flashrt-pi05
+  namespace: flashrt
+spec:
+  selector:
+    app: flashrt-pi05
+  ports:
+  - port: 80
+    targetPort: 8080
+    name: http
+  type: ClusterIP
+
+---
+# Qwen2.5 Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flashrt-qwen
+  namespace: flashrt
+  labels:
+    app: flashrt-qwen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flashrt-qwen
+  template:
+    metadata:
+      labels:
+        app: flashrt-qwen
+    spec:
+      containers:
+      - name: qwen-api
+        image: flashrt:sm89
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+            memory: "16Gi"
+            cpu: "4"
+          requests:
+            nvidia.com/gpu: 1
+            memory: "8Gi"
+            cpu: "2"
+        env:
+        - name: HF_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: flashrt-config
+              key: HF_ENDPOINT
+        command:
+        - python3
+        - -m
+        - flash_rt.services.async_api_server
+        - --model
+        - qwen25
+        - --port
+        - "8080"
+        - --checkpoint
+        - /models/qwen2.5-0.5b
+        - --max_new_tokens
+        - "10"
+        volumeMounts:
+        - name: models
+          mountPath: /models
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+      volumes:
+      - name: models
+        hostPath:
+          path: /data/models
+          type: Directory
+
+---
+# Qwen Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: flashrt-qwen
+  namespace: flashrt
+spec:
+  selector:
+    app: flashrt-qwen
+  ports:
+  - port: 80
+    targetPort: 8080
+    name: http
+  type: ClusterIP
+
+---
+# Ingress for external access (optional)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flashrt-ingress
+  namespace: flashrt
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: flashrt.your-domain.com  # Replace with your domain
+    http:
+      paths:
+      - path: /groot
+        pathType: Prefix
+        backend:
+          service:
+            name: flashrt-groot
+            port:
+              number: 80
+      - path: /pi05
+        pathType: Prefix
+        backend:
+          service:
+            name: flashrt-pi05
+            port:
+              number: 80
+      - path: /qwen
+        pathType: Prefix
+        backend:
+          service:
+            name: flashrt-qwen
+            port:
+              number: 80

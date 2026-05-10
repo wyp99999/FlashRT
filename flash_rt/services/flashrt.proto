@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package flashrt;
+
+// FlashRT Inference Service
+service FlashRTService {
+    // Health check
+    rpc Health(HealthRequest) returns (HealthResponse);
+    
+    // Get statistics
+    rpc GetStats(StatsRequest) returns (StatsResponse);
+    
+    // Single inference
+    rpc Infer(InferRequest) returns (InferResponse);
+    
+    // Batch inference
+    rpc BatchInfer(BatchInferRequest) returns (BatchInferResponse);
+    
+    // Set prompt
+    rpc SetPrompt(PromptRequest) returns (PromptResponse);
+    
+    // Build pipeline
+    rpc BuildPipeline(BuildRequest) returns (BuildResponse);
+}
+
+// Health check
+message HealthRequest {}
+
+message HealthResponse {
+    string status = 1;
+    string model = 2;
+    bool gpu_available = 3;
+    string gpu_name = 4;
+}
+
+// Statistics
+message StatsRequest {}
+
+message StatsResponse {
+    string model = 1;
+    string checkpoint = 2;
+    bool pipeline_built = 3;
+    int32 total_inferences = 4;
+    double mean_latency_ms = 5;
+    double std_latency_ms = 6;
+    double min_latency_ms = 7;
+    double max_latency_ms = 8;
+    int32 queue_size = 9;
+    int32 queue_pending = 10;
+}
+
+// Inference request
+message InferRequest {
+    string prompt = 1;
+    bytes image_data = 2;        // Raw image bytes (224x224x3)
+    bytes wrist_image_data = 3;  // Optional wrist camera image
+    repeated float state = 4;    // Optional state vector
+    int32 noise_seed = 5;        // Optional random seed
+}
+
+message InferResponse {
+    repeated Action actions = 1;  // List of actions
+    double latency_ms = 2;
+    int32 queue_position = 3;
+}
+
+message Action {
+    repeated float values = 1;  // Action dimension values
+}
+
+// Batch inference
+message BatchInferRequest {
+    repeated InferRequest requests = 1;
+    int32 max_batch_size = 2;
+}
+
+message BatchInferResponse {
+    repeated InferResponse results = 1;
+    double total_latency_ms = 2;
+    int32 batch_size = 3;
+    double throughput_req_per_sec = 4;
+}
+
+// Prompt
+message PromptRequest {
+    string prompt = 1;
+}
+
+message PromptResponse {
+    string status = 1;
+    string prompt = 2;
+}
+
+// Pipeline build
+message BuildRequest {}
+
+message BuildResponse {
+    string status = 1;
+    bool pipeline_built = 2;
+}

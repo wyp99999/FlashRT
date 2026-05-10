@@ -1,0 +1,39 @@
+{{- if .Values.persistence.models.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "flashrt.fullname" . }}-models
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "flashrt.labels" . | nindent 4 }}
+    component: models-storage
+spec:
+  accessModes:
+    - {{ .Values.persistence.models.accessMode }}
+  {{- with .Values.persistence.models.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.models.size }}
+{{- end }}
+
+{{- if .Values.persistence.checkpoints.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "flashrt.fullname" . }}-checkpoints
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "flashrt.labels" . | nindent 4 }}
+    component: checkpoints-storage
+spec:
+  accessModes:
+    - {{ .Values.persistence.checkpoints.accessMode }}
+  {{- with .Values.persistence.checkpoints.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.checkpoints.size }}
+{{- end }}

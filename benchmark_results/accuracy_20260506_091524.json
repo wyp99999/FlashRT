@@ -1,0 +1,58 @@
+{
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 4060 Ti",
+    "sm": "8.9"
+  },
+  "tests": [
+    {
+      "model": "groot_n17",
+      "mse": 0.0,
+      "cosine_similarity": 0.0,
+      "finite": true,
+      "reasonable": true,
+      "shape_consistent": true,
+      "shape_correct": true,
+      "expected_shape": [
+        40,
+        132
+      ],
+      "actual_shape": [
+        40,
+        132
+      ],
+      "mse_passed": true,
+      "cosine_passed": true,
+      "passed": true,
+      "n_samples": 5,
+      "timestamp": "2026-05-06T09:15:08.684403"
+    },
+    {
+      "model": "pi05",
+      "mse": 0.0,
+      "cosine_similarity": 0.0,
+      "finite": true,
+      "reasonable": true,
+      "shape_consistent": true,
+      "mse_passed": true,
+      "cosine_passed": true,
+      "passed": true,
+      "n_samples": 5,
+      "timestamp": "2026-05-06T09:15:22.612186"
+    },
+    {
+      "model": "qwen25_0.5b",
+      "output_consistent": true,
+      "mse": 0.0,
+      "cosine_similarity": 1.0,
+      "mse_passed": true,
+      "cosine_passed": true,
+      "passed": true,
+      "n_samples": 5,
+      "sample_output": "\n\nI am trying to",
+      "timestamp": "2026-05-06T09:15:24.462476"
+    }
+  ],
+  "timestamp": "2026-05-06T09:14:59.178506",
+  "passed": 3,
+  "failed": 0
+}

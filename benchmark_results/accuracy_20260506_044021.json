@@ -1,0 +1,11 @@
+{
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 4060 Ti",
+    "sm": "8.9"
+  },
+  "tests": [
+    {
+      "model": "groot_n17",
+      "mse": 5.618775367736816,
+      "cosine_similarity": 0.9782003558727744,
+      "mse_passed": 

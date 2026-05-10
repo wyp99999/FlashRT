@@ -1,0 +1,144 @@
+# FlashRT SM89 Docker Compose Configuration
+#
+# Usage:
+#   docker-compose up -d groot-api      # Start GROOT API server
+#   docker-compose up -d pi05-api       # Start Pi0.5 API server
+#   docker-compose up -d qwen-api       # Start Qwen2.5 API server
+#
+# Build images:
+#   docker-compose build
+
+version: '3.8'
+
+services:
+  # GROOT N1.7 API Server (38ms latency)
+  groot-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.sm89
+    image: flashrt:sm89
+    container_name: flashrt-groot
+    ports:
+      - "8080:8080"
+    volumes:
+      - /data/models:/data/models:ro
+    environment:
+      - HF_ENDPOINT=https://hf-mirror.com
+      - CUDA_VISIBLE_DEVICES=0
+    command: >
+      python3 -m flash_rt.services.async_api_server
+      --model groot_n17
+      --port 8080
+      --checkpoint /data/models/groot-n1.7
+      --num_views 1
+      --num_flow_steps 2
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Pi0.5 API Server (~59ms latency, SM89 limited)
+  pi05-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.sm89
+    image: flashrt:sm89
+    container_name: flashrt-pi05
+    ports:
+      - "8081:8081"
+    volumes:
+      - /data/models:/data/models:ro
+    environment:
+      - HF_ENDPOINT=https://hf-mirror.com
+      - CUDA_VISIBLE_DEVICES=0
+    command: >
+      python3 -m flash_rt.services.async_api_server
+      --model pi05
+      --port 8081
+      --checkpoint /data/models/pi05_base
+      --num_views 1
+      --num_steps 1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Qwen2.5-0.5B API Server
+  qwen-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.sm89
+    image: flashrt:sm89
+    container_name: flashrt-qwen
+    ports:
+      - "8082:8082"
+    volumes:
+      - /data/models:/data/models:ro
+    environment:
+      - HF_ENDPOINT=https://hf-mirror.com
+      - CUDA_VISIBLE_DEVICES=0
+    command: >
+      python3 -m flash_rt.services.async_api_server
+      --model qwen25
+      --port 8082
+      --checkpoint /data/models/qwen2.5-0.5b
+      --max_new_tokens 10
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # gRPC Server (optional)
+  grpc-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.sm89
+    image: flashrt:sm89
+    container_name: flashrt-grpc
+    ports:
+      - "50051:50051"
+    volumes:
+      - /data/models:/data/models:ro
+    environment:
+      - HF_ENDPOINT=https://hf-mirror.com
+      - CUDA_VISIBLE_DEVICES=0
+    command: >
+      python3 -m flash_rt.services.grpc_server
+      --model groot_n17
+      --port 50051
+      --checkpoint /data/models/groot-n1.7
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped

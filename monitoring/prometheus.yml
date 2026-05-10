@@ -1,0 +1,72 @@
+# FlashRT Prometheus Configuration
+# 用于抓取 FlashRT 服务指标
+
+global:
+  scrape_interval: 5s
+  evaluation_interval: 10s
+  external_labels:
+    monitor: 'flashrt-monitor'
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files
+rule_files:
+  - "alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # FlashRT GROOT API
+  - job_name: 'flashrt-groot'
+    scrape_interval: 5s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'groot-api:9090'
+          - 'localhost:9090'
+        labels:
+          model: 'groot_n17'
+          service: 'groot'
+
+  # FlashRT Pi0.5 API
+  - job_name: 'flashrt-pi05'
+    scrape_interval: 5s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'pi05-api:9091'
+          - 'localhost:9091'
+        labels:
+          model: 'pi05'
+          service: 'pi05'
+
+  # FlashRT Qwen2.5 API
+  - job_name: 'flashrt-qwen'
+    scrape_interval: 5s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'qwen-api:9092'
+          - 'localhost:9092'
+        labels:
+          model: 'qwen25'
+          service: 'qwen'
+
+  # Node exporter (system metrics)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # NVIDIA GPU exporter
+  - job_name: 'nvidia-gpu'
+    static_configs:
+      - targets: ['nvidia-gpu-exporter:9400']
+    scrape_interval: 5s

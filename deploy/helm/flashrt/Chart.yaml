@@ -1,0 +1,50 @@
+apiVersion: v2
+name: flashrt
+description: FlashRT Inference Service Helm Chart for SM89
+
+# Chart version
+version: 0.1.0
+
+# Application version
+appVersion: "0.1.0"
+
+# Chart type
+type: application
+
+# Keywords
+keywords:
+  - inference
+  - flashrt
+  - gpu
+  - nvidia
+  - robotics
+
+# Home page
+home: https://github.com/flashrt/flashrt
+
+# Sources
+sources:
+  - https://github.com/flashrt/flashrt
+
+# Maintainers
+maintainers:
+  - name: FlashRT Team
+    email: flashrt@example.com
+
+# Dependencies
+dependencies:
+  - name: prometheus
+    version: "15.x.x"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: monitoring.enabled
+  - name: grafana
+    version: "6.x.x"
+    repository: "https://grafana.github.io/helm-charts"
+    condition: monitoring.enabled
+
+# Annotations
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/signKey: |
+    fingerprint: ""
+    url: https://example.com/sign-key.pub

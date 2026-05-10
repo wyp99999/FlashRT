@@ -1,0 +1,53 @@
+{{- range $modelKey, $model := .Values.models }}
+{{- if $model.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "flashrt.fullname" $ }}-{{ $model.name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "flashrt.labels" $ | nindent 4 }}
+    model: {{ $model.name }}
+  {{- with $.Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $.Values.service.type }}
+  ports:
+    - name: http
+      port: {{ $model.port }}
+      targetPort: http
+      protocol: TCP
+    - name: metrics
+      port: {{ $model.metricsPort }}
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    {{- include "flashrt.selectorLabels" $ | nindent 4 }}
+    model: {{ $model.name }}
+---
+{{- end }}
+{{- end }}
+
+# Combined service for all models
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "flashrt.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "flashrt.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    {{- range $modelKey, $model := .Values.models }}
+    {{- if $model.enabled }}
+    - name: {{ $model.name }}
+      port: {{ $model.port }}
+      targetPort: {{ $model.port }}
+      protocol: TCP
+    {{- end }}
+    {{- end }}
+  selector:
+    {{- include "flashrt.selectorLabels" . | nindent 4 }}

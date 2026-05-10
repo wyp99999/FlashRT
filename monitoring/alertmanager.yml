@@ -1,0 +1,68 @@
+# Alertmanager Configuration
+# Configure alert notification channels
+
+global:
+  resolve_timeout: 5m
+  # SMTP configuration (optional)
+  # smtp_smarthost: 'smtp.example.com:587'
+  # smtp_from: 'alerts@example.com'
+  # smtp_auth_username: 'alerts@example.com'
+  # smtp_auth_password: 'password'
+
+# Route tree
+route:
+  group_by: ['alertname', 'severity', 'model']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'default'
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical'
+      continue: true
+    
+    # Warning alerts - delayed notification
+    - match:
+        severity: warning
+      receiver: 'warning'
+    
+    # Info alerts - log only
+    - match:
+        severity: info
+      receiver: 'info'
+
+receivers:
+  - name: 'default'
+    webhook_configs:
+      - url: 'http://flashrt-api:8080/alerts'
+        send_resolved: true
+
+  - name: 'critical'
+    webhook_configs:
+      - url: 'http://flashrt-api:8080/alerts/critical'
+        send_resolved: true
+    # Slack configuration (optional)
+    # slack_configs:
+    #   - api_url: 'https://hooks.slack.com/services/xxx'
+    #     channel: '#alerts-critical'
+    #     send_resolved: true
+
+  - name: 'warning'
+    webhook_configs:
+      - url: 'http://flashrt-api:8080/alerts/warning'
+        send_resolved: true
+
+  - name: 'info'
+    webhook_configs:
+      - url: 'http://flashrt-api:8080/alerts/info'
+        send_resolved: true
+
+# Inhibit rules
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'model']

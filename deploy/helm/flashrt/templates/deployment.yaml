@@ -1,0 +1,146 @@
+{{- range $modelKey, $model := .Values.models }}
+{{- if $model.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "flashrt.fullname" $ }}-{{ $model.name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "flashrt.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $model.name }}
+    model: {{ $model.name }}
+spec:
+  replicas: {{ $model.replicas }}
+  selector:
+    matchLabels:
+      {{- include "flashrt.selectorLabels" $ | nindent 6 }}
+      model: {{ $model.name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "flashrt.selectorLabels" $ | nindent 8 }}
+        model: {{ $model.name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ $model.metricsPort }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: {{ include "flashrt.serviceAccountName" $ }}
+      {{- with $.Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      
+      containers:
+        - name: {{ $model.name }}
+          image: "{{ $.Values.global.imageRegistry }}/{{ $model.image }}"
+          imagePullPolicy: IfNotPresent
+          
+          ports:
+            - name: http
+              containerPort: {{ $model.port }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ $model.metricsPort }}
+              protocol: TCP
+          
+          env:
+            - name: MODEL_NAME
+              value: {{ $model.name }}
+            - name: CHECKPOINT_PATH
+              value: {{ $model.checkpoint }}
+            - name: PORT
+              value: {{ $model.port }}
+            - name: METRICS_PORT
+              value: {{ $model.metricsPort }}
+            {{- range $key, $value := $.Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- range $cfgKey, $cfgVal := $model.config }}
+            - name: MODEL_CONFIG_{{ $cfgKey | upper }}
+              value: {{ $cfgVal | quote }}
+            {{- end }}
+          
+          envFrom:
+            - configMapRef:
+                name: {{ include "flashrt.fullname" $ }}-config
+          
+          {{- with $.Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          
+          {{- with $model.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          
+          {{- if $.Values.healthCheck.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ $.Values.healthCheck.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ $.Values.healthCheck.liveness.initialDelaySeconds }}
+            periodSeconds: {{ $.Values.healthCheck.liveness.periodSeconds }}
+            timeoutSeconds: {{ $.Values.healthCheck.liveness.timeoutSeconds }}
+            failureThreshold: {{ $.Values.healthCheck.liveness.failureThreshold }}
+          
+          readinessProbe:
+            httpGet:
+              path: {{ $.Values.healthCheck.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ $.Values.healthCheck.readiness.initialDelaySeconds }}
+            periodSeconds: {{ $.Values.healthCheck.readiness.periodSeconds }}
+            timeoutSeconds: {{ $.Values.healthCheck.readiness.timeoutSeconds }}
+            successThreshold: {{ $.Values.healthCheck.readiness.successThreshold }}
+            failureThreshold: {{ $.Values.healthCheck.readiness.failureThreshold }}
+          {{- end }}
+          
+          volumeMounts:
+            {{- if $.Values.persistence.models.enabled }}
+            - name: models
+              mountPath: /data/models
+              readOnly: true
+            {{- end }}
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+      
+      volumes:
+        {{- if $.Values.persistence.models.enabled }}
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ include "flashrt.fullname" $ }}-models
+        {{- end }}
+        - name: config
+          configMap:
+            name: {{ include "flashrt.fullname" $ }}-config
+      
+      {{- if $.Values.gpu.enabled }}
+      # GPU resource allocation
+      # nvidia.com/gpu: {{ $.Values.gpu.count }}
+      {{- end }}
+---
+{{- end }}
+{{- end }}

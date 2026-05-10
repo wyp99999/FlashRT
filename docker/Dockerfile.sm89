@@ -1,0 +1,70 @@
+# FlashRT — SM89 (RTX 4060 Ti / 4070 / 4080) Docker Image
+#
+# Optimized for SM89 GPUs without FP8 Tensor Core support.
+# Uses FP16 precision with CUTLASS GEMM optimization.
+#
+# Build:
+#   docker build -t flashrt:sm89 -f docker/Dockerfile.sm89 .
+#
+# Run:
+#   docker run --rm --gpus all -it flashrt:sm89
+#
+# Note: RTX 4060 Ti (SM89) has hardware limitations:
+#   - No FP8 Tensor Core
+#   - Pi0.5 optimal ~59ms, cannot achieve <50ms
+
+ARG BASE_IMAGE=nvcr.io/nvidia/pytorch:24.07-py3
+FROM ${BASE_IMAGE}
+
+# Build arguments
+ARG GPU_ARCH=89
+ARG CUTLASS_REF=v4.4.2
+
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ccache \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone CUTLASS
+RUN git clone --depth 1 --branch ${CUTLASS_REF} \
+        https://github.com/NVIDIA/cutlass.git /opt/cutlass \
+    && rm -rf /opt/cutlass/.git
+
+# Install Python packages
+RUN python3 -m pip install --no-cache-dir \
+        --upgrade pybind11 ninja
+
+WORKDIR /workspace/FlashRT
+
+# Copy build files first
+COPY CMakeLists.txt pyproject.toml setup.py README.md USAGE.md ./
+COPY csrc/         csrc/
+COPY flash_rt/     flash_rt/
+COPY flash_wm/     flash_wm/
+COPY tools/        tools/
+COPY docs/         docs/
+COPY examples/     examples/
+COPY training/     training/
+COPY tests/        tests/
+
+# Symlink CUTLASS
+RUN mkdir -p third_party && ln -sfn /opt/cutlass third_party/cutlass
+
+# Build with SM89 optimization
+RUN cmake -B build -S . \
+        -DGPU_ARCH=${GPU_ARCH} \
+ && cmake --build build -j"$(nproc)" \
+ && rm -rf build/CMakeFiles
+
+# Install FlashRT
+RUN python3 -m pip install --no-cache-dir --no-build-isolation -e ".[torch]"
+
+# Smoke test
+RUN python3 -c "import flash_rt; print('flash_rt', flash_rt.__version__, 'OK')"
+
+# Set environment for HuggingFace mirror
+ENV HF_ENDPOINT=https://hf-mirror.com
+
+# Default command
+CMD ["python3", "-c", "import flash_rt; print('FlashRT SM89 Ready'); import code; code.interact(local={'flash_rt': flash_rt})"]
